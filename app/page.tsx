@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 
 interface ItemNota {
@@ -12,40 +11,40 @@ interface ItemNota {
 }
 
 export default function AplikasiNota() {
-  // Profil Toko
   const [logo, setLogo] = useState<string | null>(null);
+  const [qrisImage, setQrisImage] = useState<string | null>(null);
   const [namaToko, setNamaToko] = useState('TOKO BERKAH');
   const [alamat, setAlamat] = useState('Jl. Raya No. 123, Purwokerto');
   const [noTelp, setNoTelp] = useState('0812-3456-7890');
+  
+  // State Nomor Nota dan Tanggal (Sekarang bisa diedit bebas)
   const [noNota, setNoNota] = useState(`INV-${Date.now().toString().slice(-6)}`);
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
 
-  // Pengaturan Barcode & QRIS
-  const [qrisPayload, setQrisPayload] = useState('https://link.dana.id/qr/contoh-toko');
   const [tampilkanQRIS, setTampilkanQRIS] = useState(true);
   const [tampilkanBarcode, setTampilkanBarcode] = useState(true);
 
-  // Rincian Transaksi
   const [items, setItems] = useState<ItemNota[]>([
     { id: '1', nama: 'Barang A', qty: 1, harga: 15000 }
   ]);
   const [bayar, setBayar] = useState<number>(20000);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const qrisInputRef = useRef<HTMLInputElement>(null);
 
-  // Ambil logo tersimpan dari LocalStorage
+  // Ambil data logo & QRIS dari penyimpanan browser (LocalStorage)
   useEffect(() => {
     const savedLogo = localStorage.getItem('nota_logo');
     if (savedLogo) setLogo(savedLogo);
+
+    const savedQris = localStorage.getItem('nota_qris_img');
+    if (savedQris) setQrisImage(savedQris);
   }, []);
 
+  // Upload Logo Toko
   const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Ukuran file logo maksimal 2 MB');
-        return;
-      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -56,10 +55,35 @@ export default function AplikasiNota() {
     }
   };
 
+  // Upload Foto QRIS Asli
+  const handleUploadQRIS = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setQrisImage(result);
+        localStorage.setItem('nota_qris_img', result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleHapusLogo = () => {
     setLogo(null);
     localStorage.removeItem('nota_logo');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  };
+
+  const handleHapusQRIS = () => {
+    setQrisImage(null);
+    localStorage.removeItem('nota_qris_img');
+    if (qrisInputRef.current) qrisInputRef.current.value = '';
+  };
+
+  // Buat No Nota Acak Baru jika dibutuhkan
+  const resetNoNotaBaru = () => {
+    setNoNota(`INV-${Date.now().toString().slice(-6)}`);
   };
 
   const tambahItem = () => {
@@ -83,7 +107,7 @@ export default function AplikasiNota() {
     <div className="min-h-screen p-4 md:p-8 font-sans">
       <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-md print:shadow-none print:p-0 print:max-w-[80mm] print:mx-auto">
         
-        {/* Panel Kontrol (Hanya tampil di layar, tidak ikut tercetak) */}
+        {/* Panel Kontrol Atas (Tersembunyi Saat Dicetak) */}
         <div className="mb-6 space-y-4 print:hidden border-b pb-4">
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-bold text-gray-800">Nota Digital</h1>
@@ -95,15 +119,15 @@ export default function AplikasiNota() {
             </button>
           </div>
 
-          <div className="bg-gray-50 p-3 rounded-lg border text-xs space-y-2">
-            <span className="font-semibold text-gray-700 block">Pengaturan Tambahan:</span>
+          <div className="bg-gray-50 p-3 rounded-lg border text-xs space-y-3">
+            <span className="font-semibold text-gray-700 block">Pengaturan Logo & QRIS:</span>
             
-            {/* Input Upload Logo */}
+            {/* Upload Logo */}
             <div className="flex items-center gap-2">
-              <label className="text-gray-600">Logo Toko:</label>
+              <label className="text-gray-600 w-24">Logo Toko:</label>
               <input 
                 type="file" 
-                ref={fileInputRef} 
+                ref={logoInputRef} 
                 accept="image/*" 
                 onChange={handleUploadLogo}
                 className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -115,8 +139,25 @@ export default function AplikasiNota() {
               )}
             </div>
 
-            {/* Checkbox QRIS & Barcode */}
-            <div className="flex flex-wrap items-center gap-4 pt-1">
+            {/* Upload QRIS */}
+            <div className="flex items-center gap-2">
+              <label className="text-gray-600 w-24">Foto QRIS:</label>
+              <input 
+                type="file" 
+                ref={qrisInputRef} 
+                accept="image/*" 
+                onChange={handleUploadQRIS}
+                className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+              />
+              {qrisImage && (
+                <button onClick={handleHapusQRIS} className="text-red-500 hover:underline">
+                  Hapus
+                </button>
+              )}
+            </div>
+
+            {/* Opsi Tampilan */}
+            <div className="flex flex-wrap items-center gap-4 pt-1 border-t">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -135,23 +176,12 @@ export default function AplikasiNota() {
                 Tampilkan Barcode Nota
               </label>
             </div>
-
-            {tampilkanQRIS && (
-              <div className="pt-1">
-                <label className="block text-gray-600 mb-1">Payload / Link QRIS:</label>
-                <input 
-                  type="text" 
-                  value={qrisPayload} 
-                  onChange={(e) => setQrisPayload(e.target.value)}
-                  placeholder="Isi teks atau link QRIS"
-                  className="w-full border rounded px-2 py-1 bg-white focus:outline-blue-500"
-                />
-              </div>
-            )}
           </div>
         </div>
 
         {/* --- TAMPILAN FISIK NOTA (AREA CETAK) --- */}
+
+        {/* Header Toko */}
         <div className="text-center border-b pb-3 mb-3">
           {logo && (
             <div className="flex justify-center mb-2">
@@ -182,9 +212,38 @@ export default function AplikasiNota() {
           />
         </div>
 
-        <div className="flex justify-between text-xs text-gray-700 mb-3">
-          <div>No: <span className="font-mono font-semibold">{noNota}</span></div>
-          <div>Tgl: {tanggal}</div>
+        {/* --- BAGIAN NOMOR NOTA & TANGGAL (BISA DIEDIT) --- */}
+        <div className="flex justify-between items-center text-xs text-gray-700 mb-3 gap-2">
+          {/* Input Nomor Nota */}
+          <div className="flex items-center gap-1 flex-1">
+            <span className="font-medium shrink-0">No:</span>
+            <input 
+              type="text" 
+              value={noNota} 
+              onChange={(e) => setNoNota(e.target.value)}
+              placeholder="INV-001"
+              className="font-mono font-semibold text-xs border-b border-dashed border-gray-300 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-transparent w-full max-w-[130px] print:border-none"
+            />
+            {/* Tombol Buat No Baru Cepat (Hanya muncul di layar) */}
+            <button 
+              onClick={resetNoNotaBaru} 
+              title="Acak nomor nota baru"
+              className="print:hidden text-[11px] text-gray-400 hover:text-blue-600"
+            >
+              🔄
+            </button>
+          </div>
+
+          {/* Input Tanggal */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="font-medium">Tgl:</span>
+            <input 
+              type="date" 
+              value={tanggal} 
+              onChange={(e) => setTanggal(e.target.value)}
+              className="text-xs border-b border-dashed border-gray-300 hover:border-blue-400 focus:border-blue-600 focus:outline-none bg-transparent cursor-pointer print:border-none"
+            />
+          </div>
         </div>
 
         {/* Tabel Barang */}
@@ -252,7 +311,7 @@ export default function AplikasiNota() {
           </button>
         </div>
 
-        {/* Ringkasan Perhitungan */}
+        {/* Ringkasan Pembayaran */}
         <div className="space-y-1 text-xs">
           <div className="flex justify-between font-bold text-sm">
             <span>Total:</span>
@@ -273,17 +332,21 @@ export default function AplikasiNota() {
           </div>
         </div>
 
-        {/* Area QRIS & Barcode */}
+        {/* QRIS & Barcode Section */}
         <div className="mt-4 pt-3 border-t border-dashed flex flex-col items-center justify-center space-y-3">
-          {tampilkanQRIS && qrisPayload && (
+          {/* Gambar QRIS Asli Toko */}
+          {tampilkanQRIS && qrisImage && (
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-gray-500 mb-1 font-medium tracking-wider">SCAN UNTUK BAYAR (QRIS)</span>
-              <div className="p-1 bg-white border border-gray-200 rounded">
-                <QRCodeSVG value={qrisPayload} size={96} level="M" />
-              </div>
+              <img 
+                src={qrisImage} 
+                alt="QRIS Toko" 
+                className="max-h-36 max-w-[140px] object-contain border p-1 rounded bg-white" 
+              />
             </div>
           )}
 
+          {/* Barcode Nomor Transaksi (Otomatis mengikuti No. Nota yang Anda ketik) */}
           {tampilkanBarcode && noNota && (
             <div className="flex flex-col items-center">
               <Barcode 
@@ -298,7 +361,7 @@ export default function AplikasiNota() {
           )}
         </div>
 
-        {/* Catatan Kaki */}
+        {/* Footer */}
         <div className="mt-4 text-center text-[10px] text-gray-500 border-t pt-2">
           <p>Terima kasih atas kunjungan Anda!</p>
           <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
